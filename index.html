@@ -42,7 +42,8 @@
 
   <script>
     // Dynamically grab the current host/port so it works on localhost, 127.0.0.1, or a live server
-    const wsUrl = `ws://${window.location.host}/ws`;
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
     let ws;
 
     function connect() {
