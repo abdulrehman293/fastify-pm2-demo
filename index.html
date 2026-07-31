@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fastify WebSocket Dashboard</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f4f4f5; padding: 2rem; color: #333; }
+    .card { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 400px; margin: 0 auto; }
+    h1 { font-size: 1.25rem; margin-top: 0; margin-bottom: 1.5rem; text-align: center; }
+    .status-container { text-align: center; margin-bottom: 1.5rem; }
+    .status { font-weight: bold; padding: 6px 12px; border-radius: 999px; display: inline-block; font-size: 0.875rem; }
+    .status.connected { background: #dcfce7; color: #166534; }
+    .status.disconnected { background: #fee2e2; color: #991b1b; }
+    .metric { display: flex; justify-content: space-between; margin-bottom: 0.75rem; border-bottom: 1px solid #e4e4e7; padding-bottom: 0.75rem; }
+    .metric:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Server Dashboard</h1>
+    
+    <div class="status-container">
+      <div id="status" class="status disconnected">Disconnected</div>
+    </div>
+    
+    <div class="metric">
+      <span>Server Uptime</span> 
+      <strong id="uptime">0s</strong>
+    </div>
+    
+    <div class="metric">
+      <span>Heap Memory Usage</span> 
+      <strong id="heap">0 MB</strong>
+    </div>
+    
+    <div class="metric">
+      <span>Last Ping</span> 
+      <strong id="ping">--:--:--</strong>
+    </div>
+  </div>
+
+  <script>
+    // Dynamically grab the current host/port so it works on localhost, 127.0.0.1, or a live server
+    const wsUrl = `ws://${window.location.host}/ws`;
+    let ws;
+
+    function connect() {
+      console.log(`Attempting to connect to ${wsUrl}...`);
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        console.log('WebSocket connected!');
+        const statusEl = document.getElementById('status');
+        statusEl.textContent = 'Connected';
+        statusEl.className = 'status connected';
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          
+          // Update the DOM with the live data
+          document.getElementById('uptime').textContent = data.uptime + 's';
+          document.getElementById('heap').textContent = data.heapUsedMb + ' MB';
+          
+          const date = new Date(data.timestamp);
+          document.getElementById('ping').textContent = date.toLocaleTimeString();
+        } catch (err) {
+          console.error("Error parsing WebSocket message:", err);
+        }
+      };
+
+      ws.onclose = () => {
+        console.log('WebSocket disconnected. Retrying in 3 seconds...');
+        const statusEl = document.getElementById('status');
+        statusEl.textContent = 'Disconnected';
+        statusEl.className = 'status disconnected';
+        
+        // Auto-reconnect if the connection drops
+        setTimeout(connect, 3000);
+      };
+      
+      ws.onerror = (error) => {
+        console.error('WebSocket Error:', error);
+      };
+    }
+
+    // Initialize connection
+    connect();
+  </script>
+</body>
+</html>
